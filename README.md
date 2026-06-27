@@ -107,7 +107,7 @@ GET    /api/tasks/:id/       Get task detail
 PUT    /api/tasks/:id/       Update task
 PATCH  /api/tasks/:id/       Partial update
 DELETE /api/tasks/:id/       Delete task
-GET    /api/tasks/stats/     Dashboard stats
+GET    /api/tasks/stats/     Dashboard stats (total, todo, inprogress, done, high_priority)
 POST   /api/tasks/reorder/   Drag and drop reorder
 ```
 
@@ -132,13 +132,38 @@ POST   /api/ai/suggest/      Generate title, description, priority from rough ta
 
 ## One Thing I Would Improve With More Time
 
-**Smarter AI with caching and streaming** — Currently the AI generates a response and returns it all at once. With more time I would add response streaming so the suggestion appears word by word like ChatGPT, implement Redis caching so repeated similar titles return instantly without burning API quota, and add Claude as a third AI fallback. I would also add Celery + Redis for background tasks like sending email reminders for overdue tasks, and implement team workspaces so multiple users can collaborate on shared task boards.
+With more time I would add Celery and Redis for background task processing — specifically to send email reminders when tasks are overdue, and to cache AI responses so repeated similar titles return instantly without burning API quota. I would also add WebSocket support using Django Channels for real-time collaboration, and team workspaces so multiple users can share and manage tasks together.
+
+---
+
+## How I Broke Down the Problem
+
+I split the backend into three Django apps from the start, each with a single responsibility:
+- **tasks/** — full CRUD with filtering, search, stats, and reorder endpoints
+- **accounts/** — JWT register, login, logout, token refresh, profile
+- **ai/** — secure Gemini and Groq integration, key never exposed to frontend
+
+I prioritised getting the database models and REST endpoints working first, then added JWT auth, then the AI endpoint. This way the API was always functional and testable at each stage.
+
+---
+
+## What I Got Stuck On and How I Fixed It
+
+**Python 3.14 on Render** — Render defaulted to Python 3.14 which broke psycopg2-binary because it doesn't support that version yet. I fixed it by setting `PYTHON_VERSION=3.11.9` as an environment variable on Render, which forced it to use a compatible version.
+
+**django_filters not installed** — The tasks views used `DjangoFilterBackend` but `django_filters` was missing from `INSTALLED_APPS`, causing a programming error on every API call. I fixed it by adding `django_filters` to `INSTALLED_APPS` and `DEFAULT_FILTER_BACKENDS` in settings.
+
+**Gemini rate limits** — During development the free Gemini API kept returning 429 Too Many Requests. I solved this by building a fallback system — the backend tries Groq first and falls back to Gemini, with clear error messages for each failure mode. This made the AI feature reliable even under quota limits.
+
+**CORS blocking Vercel preview URLs** — Vercel generates unique preview URLs for each deployment. Hardcoding one URL in `CORS_ALLOWED_ORIGINS` blocked all preview deployments. I fixed it by adding `CORS_ALLOWED_ORIGIN_REGEXES` with a pattern that allows all `.vercel.app` domains.
+
+These are real problems I debugged and fixed during development — not a project that worked perfectly first try.
 
 ---
 
 ## Live Demo
 
-- **Frontend:** https://task-frontend-ndgz-a9w18ei6k-mrgroot01s-projects.vercel.app/
+- **Frontend:** https://task-frontend-ndgz-q7e4x0zds-mrgroot01s-projects.vercel.app/
 - **Backend:** https://taskpro-backend-96wu.onrender.com
 
 ## Repositories
