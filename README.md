@@ -138,7 +138,7 @@ POST   /api/ai/suggest/      Generate title, description, priority from rough ta
 
 ## Live Demo
 
-- **Frontend:** https://task-frontend-ndgz.vercel.app
+- **Frontend:** https://task-frontend-ndgz.vercel.app/login
 - **Backend:** https://taskpro-backend-96wu.onrender.com
 
 ## Repositories
